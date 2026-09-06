@@ -172,10 +172,11 @@ Banyak proposal masih berupa konsep. GovScribe-Pipeline sudah memiliki prototipe
 🔗 https://govscribe-v2-mp3afgk8abxvrndh38s8my.streamlit.app/
 
 \#\#\# Screenshot Aplikasi
+<div align="center">
+	<img src="C:\Users\ADI-FRESH\Downloads\Keperluan Lomba ITECHNO CUP\SCREENSHOOT Bagian Zhahir\1.jpeg" alt="Portal" width="800"/>
+	<p><em>**form portal berita publik**  
+user khalayak umum dapat mengakkesnya tanpa melakukan login/register dan bisa mendapatkan keterangan berita terkini</em></p>
 
-![][image1]  
-**form portal berita publik**  
-user khalayak umum dapat mengakkesnya tanpa melakukan login/register dan bisa mendapatkan keterangan berita terkini
 
 ![][image2]  
 **form login**  
