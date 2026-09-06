@@ -173,18 +173,20 @@ Banyak proposal masih berupa konsep. GovScribe-Pipeline sudah memiliki prototipe
 
 \#\#\# Screenshot Aplikasi
 <div align="center">
-  <img src="docs/portal-berita.png" alt="Portal berita publik" width="800"/>
+  <img src="docs/1.png" alt="Portal berita publik" width="800"/>
   <p>
     <strong>Form portal berita publik</strong><br/>
     <em>Masyarakat umum dapat mengaksesnya tanpa login atau registrasi,
     dan memperoleh keterangan berita terkini.</em>
   </p>
+	<img src="docs/2.png" alt="Portal berita publik" width="800"/>
+  <p>
+    <strong>form login><br/>
+    <em>user dapat melakukan login pada web ini terkhusus untuk karyawan yang sudah mendaftar atau pekerja pnsnya, ada keteragan button lupa kata sandi dan button kembali ke portal berita.</em>
+  </p>
 </div>
 
-
-![Portal Berita][image2]  
-**form login**  
-user dapat melakukan login pada web ini terkhusus untuk karyawan yang sudah mendaftar atau pekerja pnsnya, ada keteragan button lupa kata sandi dan button kembali ke portal berita  
+		
 ![][image3]  
 **form register**  
 user baru/ karwayan baru dapat melakukan register pada akun emai dinas mereka atau menggunakan akun pribaadinya lalu data dapat diakses juga menggunakan verifikasi wajah agar bisa masuk kedalam dashboard webnya   
