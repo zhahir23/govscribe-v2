@@ -3,11 +3,8 @@ GovScribe — Sistem Notulensi Rapat Digital Pemerintah
 
 Versi ini sudah terhubung dengan tiga modul pendamping:
     database.py           penyimpanan data (SQLite)
-    email_service.py      pengiriman email OTP
-    reset_password_ui.py  alur lupa kata sandi
-
-Menjalankan aplikasi:
-    streamlit run notelensi_pemerintah.py
+    email_service.py      validasi email & notifikasi opsional (bukan OTP)
+    reset_password_ui.py  alur lupa kata sandi (verifikasi NIP/Username + Email, tanpa OTP)
 """
 
 import os

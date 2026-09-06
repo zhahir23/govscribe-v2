@@ -1,5 +1,5 @@
 """
-reset_password_ui.py — Alur "Lupa Kata Sandi" untuk GovScribe
+reset_password_ui.py — Alur "Lupa Kata Sandi" untuk GovScribe (TANPA OTP)
 
 Menggantikan blok lupa password di notelensi_pemerintah.py (baris 671-745).
 Cukup panggil satu fungsi:
@@ -10,22 +10,23 @@ Cukup panggil satu fungsi:
         reset_password_ui.render()
         st.stop()
 
-Tiga tahap:
-    1. minta      -> masukkan ALAMAT EMAIL, sistem kirim kode ke email itu
-    2. verifikasi -> masukkan 6 digit kode
-    3. sandi_baru -> tentukan kata sandi baru
+Dua tahap (OTP dihapus atas permintaan, supaya tidak bergantung ke SMTP):
+    1. verifikasi_akun -> masukkan NIP/Username DAN Email, keduanya harus
+                          cocok dengan satu akun yang sama di database
+    2. sandi_baru       -> tentukan kata sandi baru
 
-Catatan: sejak versi ini, tahap pertama mencari akun berdasarkan EMAIL
-(db.ambil_pegawai_by_email), bukan lagi NIP/username. Begitu akun ketemu,
-username asli akun itu disimpan di session_state["rp_username"] dan dipakai
-untuk seluruh tahap berikutnya (OTP, verifikasi, ganti password) — jadi
-logika OTP di database.py tidak perlu diubah sama sekali.
+PERINGATAN KEAMANAN:
+    Versi ini TIDAK mengirim kode verifikasi ke email. Siapa pun yang tahu
+    NIP/username dan email seseorang bisa mereset password akun itu tanpa
+    perlu akses ke email sungguhan. Cocok untuk demo/latihan, tapi kurang
+    aman untuk pemakaian produksi sungguhan. Kalau nanti SMTP sudah beres
+    dan mau kembali ke alur OTP, tinggal pakai versi reset_password_ui.py
+    sebelumnya (yang memanggil db.buat_otp / db.verifikasi_otp).
 
 Semua state disimpan dengan awalan "rp_" supaya tidak bentrok dengan
 session_state yang sudah ada di file utama.
 """
 
-import time
 from datetime import datetime
 
 import streamlit as st
@@ -33,12 +34,10 @@ import streamlit as st
 import database as db
 import email_service as mail
 
-# Kalau True, sistem tidak memberi tahu apakah sebuah email terdaftar atau
-# tidak. Ini mencegah orang luar menebak-nebak daftar pegawai. Ubah ke
-# False kalau kamu lebih mengutamakan kemudahan saat uji coba.
+# Kalau True, sistem tidak memberi tahu secara spesifik apakah NIP/username
+# atau email yang salah. Ubah ke False kalau mau pesan error lebih detail
+# saat uji coba.
 SEMBUNYIKAN_KEBERADAAN_AKUN = True
-
-JEDA_KIRIM_ULANG_DETIK = 60
 
 
 # ==========================================================
@@ -47,11 +46,9 @@ JEDA_KIRIM_ULANG_DETIK = 60
 
 def _init_state():
     default = {
-        "rp_tahap": "minta",
+        "rp_tahap": "verifikasi_akun",
         "rp_username": "",
-        "rp_email_samar": "",
-        "rp_terverifikasi": False,
-        "rp_waktu_kirim": 0.0,
+        "rp_akun_terverifikasi": False,
         "rp_pesan": None,      # (jenis, teks) -> jenis: info | sukses | error
     }
     for kunci, nilai in default.items():
@@ -78,84 +75,47 @@ def _tampilkan_pesan():
 
 
 # ==========================================================
-# LOGIKA
-# ==========================================================
-
-def _kirim_kode(email):
-    """Cari akun lewat email, buat OTP, kirim email. Mengembalikan (lanjut, username_asli, email_samar)."""
-    email = (email or "").strip()
-    pegawai = db.ambil_pegawai_by_email(email)
-
-    pesan_netral = ("Jika email tersebut terdaftar, kode verifikasi "
-                    "sudah dikirim ke alamat tersebut.")
-
-    if pegawai is None:
-        if SEMBUNYIKAN_KEBERADAAN_AKUN:
-            _pesan("info", pesan_netral)
-            return True, "", ""
-        _pesan("error", "Email tersebut tidak terdaftar di akun manapun.")
-        return False, "", ""
-
-    email_tujuan = pegawai.get("email")
-    if not mail.email_valid(email_tujuan):
-        _pesan("error", "Akun ini belum punya alamat email yang valid. "
-                        "Hubungi administrator untuk memperbarui data Anda.")
-        return False, "", ""
-
-    kode, error = db.buat_otp(pegawai["username"])
-    if kode is None:
-        _pesan("error", error)
-        return False, "", ""
-
-    terkirim, info = mail.kirim_otp(
-        email_tujuan,
-        kode,
-        pegawai.get("nama") or pegawai["username"],
-        masa_berlaku_menit=db.OTP_MASA_BERLAKU_MENIT,
-    )
-
-    if not terkirim:
-        _pesan("error", f"Kode gagal dikirim. {info}")
-        return False, "", ""
-
-    st.session_state["rp_waktu_kirim"] = time.time()
-    _pesan("sukses", pesan_netral if SEMBUNYIKAN_KEBERADAAN_AKUN
-           else f"Kode dikirim ke {mail.samarkan_email(email_tujuan)}.")
-    return True, pegawai["username"], mail.samarkan_email(email_tujuan)
-
-
-def _sisa_jeda():
-    berlalu = time.time() - st.session_state.get("rp_waktu_kirim", 0)
-    return max(0, int(JEDA_KIRIM_ULANG_DETIK - berlalu))
-
-
-# ==========================================================
 # TAMPILAN
 # ==========================================================
 
-def _tahap_minta():
+def _tahap_verifikasi_akun():
     st.subheader("Lupa Kata Sandi")
-    st.caption("Masukkan alamat email yang terdaftar pada akun Anda. Kami akan "
-               "mengirimkan kode verifikasi ke email tersebut.")
+    st.caption("Masukkan NIP/Username DAN alamat email yang terdaftar pada akun "
+               "Anda. Keduanya harus cocok dengan data yang tersimpan.")
 
-    email = st.text_input("Alamat Email", key="rp_input_email",
-                          placeholder="nama@instansi.go.id")
+    username_input = st.text_input("NIP / Username", key="rp_input_username",
+                                   placeholder="contoh: pns_19850110")
+    email_input = st.text_input("Alamat Email", key="rp_input_email",
+                                placeholder="nama@instansi.go.id")
 
-    kolom_kirim, kolom_batal = st.columns(2)
+    kolom_verifikasi, kolom_batal = st.columns(2)
 
-    with kolom_kirim:
-        if st.button("Kirim Kode Verifikasi", type="primary", use_container_width=True):
-            email_bersih = (email or "").strip()
-            if not email_bersih:
-                _pesan("error", "Alamat email wajib diisi.")
-            elif not mail.email_valid(email_bersih):
-                _pesan("error", "Format email tidak valid.")
+    with kolom_verifikasi:
+        if st.button("Verifikasi Akun", type="primary", use_container_width=True):
+            username_bersih = (username_input or "").strip()
+            email_bersih = (email_input or "").strip()
+
+            pesan_gagal = ("NIP/Username dan Email tidak cocok dengan data yang "
+                          "terdaftar. Periksa kembali kedua isian tersebut.")
+
+            if not username_bersih or not email_bersih:
+                _pesan("error", "NIP/Username dan Email wajib diisi.")
             else:
-                lanjut, username_asli, email_samar = _kirim_kode(email_bersih)
-                if lanjut:
-                    st.session_state["rp_username"] = username_asli
-                    st.session_state["rp_email_samar"] = email_samar
-                    st.session_state["rp_tahap"] = "verifikasi"
+                pegawai = db.ambil_pegawai(username_bersih)
+                cocok = (
+                    pegawai is not None
+                    and (pegawai.get("email") or "").strip().lower() == email_bersih.lower()
+                )
+                if cocok:
+                    st.session_state["rp_username"] = pegawai["username"]
+                    st.session_state["rp_akun_terverifikasi"] = True
+                    st.session_state["rp_tahap"] = "sandi_baru"
+                    _pesan("sukses", "Akun terverifikasi. Silakan buat kata sandi baru.")
+                else:
+                    if SEMBUNYIKAN_KEBERADAAN_AKUN:
+                        _pesan("error", pesan_gagal)
+                    else:
+                        _pesan("error", "NIP/Username tidak ditemukan atau email tidak cocok.")
             st.rerun()
 
     with kolom_batal:
@@ -163,58 +123,6 @@ def _tahap_minta():
             reset_state()
             st.session_state["show_forgot_pass"] = False
             st.rerun()
-
-
-def _tahap_verifikasi():
-    st.subheader("Verifikasi Identitas")
-
-    tujuan = st.session_state.get("rp_email_samar")
-    if tujuan:
-        st.caption(f"Kode 6 digit telah dikirim ke {tujuan}. "
-                   f"Berlaku {db.OTP_MASA_BERLAKU_MENIT} menit.")
-    else:
-        st.caption(f"Masukkan kode 6 digit yang dikirim ke email Anda. "
-                   f"Berlaku {db.OTP_MASA_BERLAKU_MENIT} menit.")
-
-    st.info("Jangan berikan kode ini kepada siapa pun, termasuk kepada pihak "
-            "yang mengaku sebagai petugas.", icon="🔒")
-
-    kode = st.text_input("Kode Verifikasi", max_chars=6, key="rp_input_kode",
-                         placeholder="000000")
-
-    kolom_cek, kolom_ulang = st.columns(2)
-
-    with kolom_cek:
-        if st.button("Verifikasi", type="primary", use_container_width=True):
-            if not st.session_state.get("rp_username"):
-                _pesan("error", "Sesi tidak valid. Silakan ulangi dari awal.")
-                st.session_state["rp_tahap"] = "minta"
-            elif len(kode.strip()) != 6 or not kode.strip().isdigit():
-                _pesan("error", "Kode harus berupa 6 angka.")
-            else:
-                berhasil, info = db.verifikasi_otp(st.session_state["rp_username"], kode.strip())
-                if berhasil:
-                    st.session_state["rp_terverifikasi"] = True
-                    st.session_state["rp_tahap"] = "sandi_baru"
-                    _pesan("sukses", "Identitas terverifikasi. Silakan buat kata sandi baru.")
-                else:
-                    _pesan("error", info)
-            st.rerun()
-
-    with kolom_ulang:
-        sisa = _sisa_jeda()
-        if sisa > 0:
-            st.button(f"Kirim Ulang ({sisa}s)", disabled=True, use_container_width=True)
-        elif st.button("Kirim Ulang Kode", use_container_width=True):
-            pegawai = db.ambil_pegawai(st.session_state.get("rp_username", ""))
-            if pegawai:
-                _kirim_kode(pegawai.get("email", ""))
-            st.rerun()
-
-    if st.button("Batalkan"):
-        reset_state()
-        st.session_state["show_forgot_pass"] = False
-        st.rerun()
 
 
 def _tahap_sandi_baru():
@@ -229,9 +137,9 @@ def _tahap_sandi_baru():
         (st.success if valid else st.warning)(catatan)
 
     if st.button("Simpan Kata Sandi", type="primary", use_container_width=True):
-        if not st.session_state.get("rp_terverifikasi"):
+        if not st.session_state.get("rp_akun_terverifikasi"):
             _pesan("error", "Sesi verifikasi tidak valid. Silakan ulangi dari awal.")
-            st.session_state["rp_tahap"] = "minta"
+            st.session_state["rp_tahap"] = "verifikasi_akun"
             st.rerun()
 
         if sandi != ulangi:
@@ -246,6 +154,11 @@ def _tahap_sandi_baru():
         username = st.session_state["rp_username"]
         pegawai = db.ambil_pegawai(username)
 
+        if pegawai is None:
+            _pesan("error", "Akun tidak ditemukan. Silakan ulangi dari awal.")
+            st.session_state["rp_tahap"] = "verifikasi_akun"
+            st.rerun()
+
         sama, _ = db.cek_password(sandi, pegawai["password_hash"])
         if sama:
             _pesan("error", "Kata sandi baru tidak boleh sama dengan yang lama.")
@@ -253,18 +166,29 @@ def _tahap_sandi_baru():
 
         db.update_user_password(username, sandi)
 
-        # Beri tahu pemilik akun bahwa sandinya baru saja diubah.
-        if mail.email_valid(pegawai.get("email")):
-            mail.kirim_konfirmasi_reset(
-                pegawai["email"],
-                pegawai.get("nama") or username,
-                datetime.now().strftime("%d %B %Y %H:%M"),
-            )
+        # Coba beri tahu pemilik akun lewat email kalau SMTP tersedia.
+        # Kalau SMTP belum diatur / gagal kirim, proses ganti password tetap
+        # dianggap berhasil -- pemberitahuan email di sini murni bonus,
+        # bukan syarat.
+        try:
+            if mail.email_valid(pegawai.get("email")):
+                mail.kirim_konfirmasi_reset(
+                    pegawai["email"],
+                    pegawai.get("nama") or username,
+                    datetime.now().strftime("%d %B %Y %H:%M"),
+                )
+        except Exception:
+            pass
 
         reset_state()
         st.session_state["show_forgot_pass"] = False
         st.session_state["rp_pesan"] = ("sukses", "Kata sandi berhasil diperbarui. "
                                                   "Silakan login dengan kata sandi baru.")
+        st.rerun()
+
+    if st.button("Batalkan"):
+        reset_state()
+        st.session_state["show_forgot_pass"] = False
         st.rerun()
 
 
@@ -274,12 +198,10 @@ def render():
     _tampilkan_pesan()
 
     tahap = st.session_state["rp_tahap"]
-    urutan = {"minta": 1, "verifikasi": 2, "sandi_baru": 3}
-    st.progress(urutan[tahap] / 3, text=f"Langkah {urutan[tahap]} dari 3")
+    urutan = {"verifikasi_akun": 1, "sandi_baru": 2}
+    st.progress(urutan[tahap] / 2, text=f"Langkah {urutan[tahap]} dari 2")
 
-    if tahap == "minta":
-        _tahap_minta()
-    elif tahap == "verifikasi":
-        _tahap_verifikasi()
+    if tahap == "verifikasi_akun":
+        _tahap_verifikasi_akun()
     else:
         _tahap_sandi_baru()
