@@ -294,6 +294,7 @@ menggunakan Mermaid PNG
 <div align="center">
 	<img src="docs/Layanan Pemrosesan Kata-2026-09-06-204355.png" alt="Our System Architecture" width="800"/>
 </div>
+
 \`\`\`
 
 \#\#\# Database Schema
