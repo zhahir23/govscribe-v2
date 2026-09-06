@@ -314,27 +314,33 @@ menggunakan Mermaid PNG
 \#\#\# Folder Structure
 
 \`\`\`  
-rapat-notelensi-online-main/  
-├── notelensi\_pemerintah.py      		49 KB   Aplikasi utama, seluruh antarmuka  
-├── database.py                 			28 KB   Lapisan data, autentikasi, OTP  
-├── email\_service.py             		13 KB   Pengiriman email  
-├── reset\_password\_ui.py          		9 KB     Alur lupa kata sandi tiga tahap  
-├── migrasi\_csv\_ke\_db.py          		3 KB     Skrip sekali pakai, migrasi data lama  
-│  
-├── requirements.txt                     		Dependensi Python  
-├── packages.txt                         		Dependensi sistem (ffmpeg)  
-├── runtime.txt                          		Python 3.11  
-│  
-├── .streamlit/  
-│   └── secrets.toml.contoh              	Templat kredensial, tanpa isi rahasia  
-│  
-├── registered\_faces/  
-│   └── .gitkeep                         		Penanda agar folder tetap ada  
-│  
-├── .gitignore  
-├── README.md  
-└── CARA\_MENJALANKAN.md             Panduan pemasangan
-
+govscribe-v2/
+│
+├── notelensi_pemerintah.py      # Aplikasi utama Streamlit, seluruh antarmuka
+├── database.py                  # Lapisan data: CRUD, autentikasi, OTP, enkripsi
+├── email_service.py             # Pengiriman email OTP dan templat HTML
+├── reset_password_ui.py         # Alur lupa kata sandi
+├── migrasi_csv_ke_db.py         # Skrip sekali pakai, migrasi data versi lama
+│
+├── tests/                       # Pengujian otomatis (81 test, cakupan 86%)
+│   ├── test_database.py         # 58 test: auth, OTP, notulensi, absensi, skema
+│   └── test_email_service.py    # 23 test: validasi, templat, penanganan galat SMTP
+├── conftest.py                  # Konfigurasi pytest, database sementara terisolasi
+├── pytest.ini                   # Pengaturan penemuan berkas uji
+│
+├── docs/                        # Tangkapan layar dan aset dokumentasi
+│
+├── registered_faces/            # Foto wajah pegawai (isi diabaikan Git)
+│   └── .gitkeep
+│
+├── requirements.txt             # Dependensi Python
+├── packages.txt                 # Dependensi sistem (ffmpeg)
+├── runtime.txt                  # Versi Python (3.11)
+│
+├── README.md                    # Dokumentasi utama
+├── CARA_MENJALANKAN.md          # Panduan pemasangan dan pemakaian
+├── LICENSE                      # Lisensi MIT
+└── .gitignore                   # Berkas yang tidak ikut ke repositori
 \`\`\`
 
 \---
