@@ -4,7 +4,7 @@
 \[LiveDemo\]  
 ([https://govscribe-v2-mp3afgk8abxvrndh38s8my.streamlit.app/](https://govscribe-v2-mp3afgk8abxvrndh38s8my.streamlit.app/)) 
 
-Github : ([https://github.com/zhahir23/govscribe-v2/settings/access](https://github.com/zhahir23/govscribe-v2/settings/access)) 
+Github : ([https://github.com/zhahir23/govscribe-v2/settings/access](https://github.com/zhahir23/govscribe-v2)) 
 
 \[License\]  
 ([https://github.com/zhahir23/govscribe-v2/blob/main/LICENSE](https://github.com/zhahir23/govscribe-v2/blob/main/LICENSE))  
@@ -213,25 +213,12 @@ Banyak proposal masih berupa konsep. GovScribe-Pipeline sudah memiliki prototipe
     <strong>Menu Profile</strong><br/>
 	<em>disini keterangan nama user jabatan pegawai peran dll. ada juga keterangaan status dari karyawannya total absensi dan total beritaa yang telah diuplod ke publik.</em>
 	</p>
+	<img src="docs/9.jpeg" alt="Logout" width="800"/>
+	<p>
+    <strong>Tampilan Menu Logout</strong><br/>
+	<em>berikut ini adalah tampilan dari form logout untuk karyawan yang inngin keluar ishoma atau telah menyeleksaikan pekerjaannya/pulang ada keterangan nip, password dan foto bukti absen keluar.</em>
+	</p>
 </div>
-
-
-
-
-
-**notulensi rapat digital.**  
-keterangan untuk megoupod notulensi rapat digital untuk mentranskrip textnya dan merevisi serta menulis ulang/ merevisi text berita yang akan diterbitkan. ada pula keterangan judul dan lokasi rapatnya ada dimana  
-![][image6]  
-![][image7]  
-**form daftar karyawan**  
-form ini ada keteragan daftar karyawan masuk kayawan keluar karyawan ishoma metode loginnya mengunaakn apa foto atau tidak dan waktu serta tanggalnya  
-![][image8]  
-**menu profile**   
-disini keterangan nama user jabatan pegawai peran dll. ada juga keterangaan status dari karyawannya total absensi dan total beritaa yang telah diuplod ke publik
-
-![][image9]  
-**tampilan form logout.**  
-berikut ini adalah tampilan dari form logout untuk karyawan yang inngin keluar ishoma atau telah menyeleksaikan pekerjaannya/pulang ada keterangan nip, password dan foto bukti absen keluar
 
 \# Video Demo
 
