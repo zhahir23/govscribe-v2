@@ -173,23 +173,23 @@ Banyak proposal masih berupa konsep. GovScribe-Pipeline sudah memiliki prototipe
 
 \#\#\# Screenshot Aplikasi
 <div align="center">
-  <img src="docs/1.jpeg" alt="Portal berita publik" width="800"/>
-  <p>
-    <strong>Form portal berita publik</strong><br/>
-    <em>Masyarakat umum dapat mengaksesnya tanpa login atau registrasi,
-    dan memperoleh keterangan berita terkini.</em>
-  </p>
-	<img src="govscribe-v2/docs/2.png" alt="Login" width="800"/>
-  <p>
-    <strong>form login><br/>
-    <em>user dapat melakukan login pada web ini terkhusus untuk karyawan yang sudah mendaftar atau pekerja pnsnya, ada keteragan button lupa kata sandi dan button kembali ke portal berita.</em>
-  </p>
+	<img src="docs/1.jpeg" alt="Portal berita publik" width="800"/>
+	<p>
+		<strong>Form portal berita publik</strong><br/>
+		<em>Masyarakat umum dapat mengaksesnya tanpa login atau registrasi, dan memperoleh keterangan berita terkini.</em>
+	</p>
+	<img src="docs/2.jpeg" alt="Login" width="800"/>
+	<p>
+		<strong>form login</strong><br/>
+		<em>user dapat melakukan login pada web ini terkhusus untuk karyawan yang sudah mendaftar atau pekerja pnsnya, ada keteragan button lupa kata sandi dan button kembali ke portal berita.</em>
+	</p>
+	<img src="docs/3.jpeg" alt="Login" width="800"/>
+	<p>
+    <strong>form register</strong><br/>
+	<em>user baru/ karwayan baru dapat melakukan register pada akun emai dinas mereka atau menggunakan akun pribaadinya lalu data dapat diakses juga menggunakan verifikasi wajah agar bisa masuk kedalam dashboard webnya.</em>
 </div>
 
-		
-![][image3]  
-**form register**  
-user baru/ karwayan baru dapat melakukan register pada akun emai dinas mereka atau menggunakan akun pribaadinya lalu data dapat diakses juga menggunakan verifikasi wajah agar bisa masuk kedalam dashboard webnya   
+
 ![][image4]  
 **Dashbord**   
 pada ketrangan ini ada tampilan aktifitas yang sedang berjalan seperti login register atau uplod berita ktereangan berikut ini juga bisa menjadi keterangan absen pegawai. begitu juga dengan keterangan lainnua seperti jumalh karyawannya dan berita yang sudah terbit 
