@@ -167,7 +167,7 @@ Banyak proposal masih berupa konsep. GovScribe-Pipeline sudah memiliki prototipe
 
 # \#\# 📸 Demo & Screenshot
 
-\# Live Demo
+\#\#\# Live Demo
 
 🔗 https://govscribe-v2-mp3afgk8abxvrndh38s8my.streamlit.app/
 
@@ -177,26 +177,47 @@ Banyak proposal masih berupa konsep. GovScribe-Pipeline sudah memiliki prototipe
 	<p>
 		<strong>Form portal berita publik</strong><br/>
 		<em>Masyarakat umum dapat mengaksesnya tanpa login atau registrasi, dan memperoleh keterangan berita terkini.</em>
-	</p>
+	</p>	
 	<img src="docs/2.jpeg" alt="Login" width="800"/>
 	<p>
 		<strong>form login</strong><br/>
 		<em>user dapat melakukan login pada web ini terkhusus untuk karyawan yang sudah mendaftar atau pekerja pnsnya, ada keteragan button lupa kata sandi dan button kembali ke portal berita.</em>
-	</p>
-	<img src="docs/3.jpeg" alt="Login" width="800"/>
+	</p>	
+	<img src="docs/3.jpeg" alt="Register" width="800"/>
 	<p>
     <strong>form register</strong><br/>
 	<em>user baru/ karwayan baru dapat melakukan register pada akun emai dinas mereka atau menggunakan akun pribaadinya lalu data dapat diakses juga menggunakan verifikasi wajah agar bisa masuk kedalam dashboard webnya.</em>
+	</p>	
+	<img src="docs/4.jpeg" alt="Dashbord" width="800"/>
+	<p>
+    <strong>Menu Dashbord</strong><br/>
+	<em>pada Menu ini ada tampilan aktifitas yang sedang berjalan seperti login register atau uplod berita ktereangan berikut ini juga bisa menjadi keterangan absen pegawai. Begitu juga dengan keterangan lainnua seperti jumalh karyawannya dan berita yang sudah terbit.</em>
+	</p>	
+	<img src="docs/5.jpeg" alt="Rekam dan Transkripsi" width="800"/>
+	<p>
+    <strong>Perekam suara & Transkripsi Otomatis</strong><br/>
+	<em>yang dimana merekam suara pas rapat untuk notelensi rapat setelah di rekam bakal otomatis hasil dari rekam suaranya dan juga bisa di edit, selain itu juga bisa unduh, rekaman nya, dokumen notelensi nya untuk dikirim ke internal pemerintah sebelum publish ke berita. Selain itu juga bisa di unduh.</em>
+	</p>
+	<img src="docs/6.jpeg" alt="Notulensi Rapat Digital" width="800"/>
+	<p>
+    <strong>notulensi rapat digital</strong><br/>
+	<em>keterangan untuk megoupod notulensi rapat digital untuk mentranskrip textnya dan merevisi serta menulis ulang/ merevisi text berita yang akan diterbitkan. ada pula keterangan judul dan lokasi rapatnya ada dimana.</em>
+	</p>
+	<img src="docs/7.jpeg" alt="Daftar Karyawan" width="800"/>
+	<p>
+    <strong>Form Daftar Karyawan</strong><br/>
+	<em>form ini ada keteragan daftar karyawan masuk kayawan keluar karyawan ishoma metode loginnya mengunaakn apa foto atau tidak dan waktu serta tanggalnya.</em>
+	</p>
+	<img src="docs/8.jpeg" alt="Profil" width="800"/>
+	<p>
+    <strong>Menu Profile</strong><br/>
+	<em>disini keterangan nama user jabatan pegawai peran dll. ada juga keterangaan status dari karyawannya total absensi dan total beritaa yang telah diuplod ke publik.</em>
+	</p>
 </div>
 
 
-![][image4]  
-**Dashbord**   
-pada ketrangan ini ada tampilan aktifitas yang sedang berjalan seperti login register atau uplod berita ktereangan berikut ini juga bisa menjadi keterangan absen pegawai. begitu juga dengan keterangan lainnua seperti jumalh karyawannya dan berita yang sudah terbit 
 
-![][image5]  
-**Perekam suara & Transkripsi Otomatis**  
-yang dimana merekam suara pas rapat untuk notelensi rapat setelah di rekam bakal otomatis hasil dari rekam suaranya dan juga bisa di edit, selain itu juga bisa unduh, rekaman nya, dokumen notelensi nya untuk dikirim ke internal pemerintah sebelum publish ke berita. Selain itu juga bisa di unduh 
+
 
 **notulensi rapat digital.**  
 keterangan untuk megoupod notulensi rapat digital untuk mentranskrip textnya dan merevisi serta menulis ulang/ merevisi text berita yang akan diterbitkan. ada pula keterangan judul dan lokasi rapatnya ada dimana  
