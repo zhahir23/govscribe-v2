@@ -179,7 +179,7 @@ user khalayak umum dapat mengakkesnya tanpa melakukan login/register dan bisa me
 </div>
 
 
-![][image2]  
+![Portal Berita][image2]  
 **form login**  
 user dapat melakukan login pada web ini terkhusus untuk karyawan yang sudah mendaftar atau pekerja pnsnya, ada keteragan button lupa kata sandi dan button kembali ke portal berita  
 ![][image3]  
