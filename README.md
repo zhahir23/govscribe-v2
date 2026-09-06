@@ -173,7 +173,7 @@ Banyak proposal masih berupa konsep. GovScribe-Pipeline sudah memiliki prototipe
 
 \#\#\# Screenshot Aplikasi
 <div align="center">
-  <img src="govscribe-v2/docs/1.png" alt="Portal berita publik" width="800"/>
+  <img src="docs/1.jpeg" alt="Portal berita publik" width="800"/>
   <p>
     <strong>Form portal berita publik</strong><br/>
     <em>Masyarakat umum dapat mengaksesnya tanpa login atau registrasi,
