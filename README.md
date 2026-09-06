@@ -313,7 +313,7 @@ menggunakan Mermaid PNG
 
 \#\#\# Folder Structure
 
-\`\`\`  
+```
 govscribe-v2/
 │
 ├── notelensi_pemerintah.py      # Aplikasi utama Streamlit, seluruh antarmuka
@@ -341,9 +341,7 @@ govscribe-v2/
 ├── CARA_MENJALANKAN.md          # Panduan pemasangan dan pemakaian
 ├── LICENSE                      # Lisensi MIT
 └── .gitignore                   # Berkas yang tidak ikut ke repositori
-
-\`\`\`
-
+```
 \---
 
 # \#\# ⚙️ Instalasi & Setup
