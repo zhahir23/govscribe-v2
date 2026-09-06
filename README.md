@@ -357,8 +357,8 @@ Pastikan Anda telah menginstall:
 \#\#\#\# 1️⃣ Clone Repository
 
 \`\`\`bash  
-git clone https://github.com/zhahir23/rapat-notelensi-online-main.git  
-cd rapat-notelensi-online-main  
+git clone https://github.com/zhahir23/govscribe-v2.git  
+cd govscribe-v2  
 \`\`\`
 
 \#\#\#\# 2️⃣ Install Dependencies
