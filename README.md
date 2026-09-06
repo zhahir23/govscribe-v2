@@ -173,9 +173,12 @@ Banyak proposal masih berupa konsep. GovScribe-Pipeline sudah memiliki prototipe
 
 \#\#\# Screenshot Aplikasi
 <div align="center">
-	<img src="https://drive.google.com/file/d/1nc_4B8ZB0dNIp3T7t0n1MZWVqjHbJ3__/view?usp=drive_link" alt="Portal" width="800"/>
-	<p><em>**form portal berita publik**  
-user khalayak umum dapat mengakkesnya tanpa melakukan login/register dan bisa mendapatkan keterangan berita terkini</em></p>
+  <img src="docs/portal-berita.png" alt="Portal berita publik" width="800"/>
+  <p>
+    <strong>Form portal berita publik</strong><br/>
+    <em>Masyarakat umum dapat mengaksesnya tanpa login atau registrasi,
+    dan memperoleh keterangan berita terkini.</em>
+  </p>
 </div>
 
 
