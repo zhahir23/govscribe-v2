@@ -293,45 +293,52 @@ audio-recorder-streamlit==0.0.8
 menggunakan Mermaid Code (langsung salin kode di bawah, buka [**https://mermaid.live/**](https://mermaid.live/)**,** setelah itu tempel, muncul strukturnya)
 
 
-flowchart TB  
-    A1\["Staf / PNS\<br/\>browser"\]  
-    A2\["Masyarakat\<br/\>tanpa login"\]
-    subgraph LOKAL\["Server Lokal Instansi (on-premise)"\]  
-        subgraph UI\["Lapisan Antarmuka — Streamlit"\]  
-            B1\["notelensi\_pemerintah.py\<br/\>Dashboard · Workspace · Portal · Absensi"\]  
-            B2\["reset\_password\_ui.py\<br/\>Alur lupa kata sandi"\]  
+flowchart TB
+    A1["Staf / PNS<br/>browser"]
+    A2["Masyarakat<br/>tanpa login"]
+
+    subgraph LOKAL["Server Lokal Instansi (on-premise)"]
+        subgraph UI["Lapisan Antarmuka — Streamlit"]
+            B1["notelensi_pemerintah.py<br/>Dashboard · Workspace · Portal · Absensi"]
+            B2["reset_password_ui.py<br/>Alur lupa kata sandi"]
         end
-        subgraph PROSES\["Lapisan Pemrosesan"\]  
-            C1\["Filter noise\<br/\>scipy"\]  
-            C2\["Speech-to-Text\<br/\>Whisper"\]  
-            C3\["Ekstraksi poin\<br/\>kata kunci"\]  
-            C4\["Generator dokumen\<br/\>python-docx"\]  
-            C5\["Deteksi wajah\<br/\>OpenCV"\]  
+
+        subgraph PROSES["Lapisan Pemrosesan"]
+            C1["Filter noise<br/>scipy"]
+            C2["Speech-to-Text<br/>Whisper"]
+            C3["Ekstraksi poin<br/>kata kunci"]
+            C4["Generator dokumen<br/>python-docx"]
+            C5["Deteksi wajah<br/>OpenCV"]
         end
-        subgraph LAYANAN\["Lapisan Layanan"\]  
-            D1\["database.py\<br/\>CRUD · Auth · OTP · Enkripsi"\]  
-            D2\["email\_service.py\<br/\>SMTP · Templat HTML"\]  
+
+        subgraph LAYANAN["Lapisan Layanan"]
+            D1["database.py<br/>CRUD · Auth · OTP · Enkripsi"]
+            D2["email_service.py<br/>SMTP · Templat HTML"]
         end
-        subgraph SIMPAN\["Penyimpanan Lokal"\]  
-            E1\[("govscribe.db\<br/\>SQLite, 5 tabel")\]  
-            E2\["secret.key\<br/\>kunci Fernet"\]  
-            E3\["registered\_faces/\<br/\>foto wajah"\]  
-        end  
+
+        subgraph SIMPAN["Penyimpanan Lokal"]
+            E1[("govscribe.db<br/>SQLite, 5 tabel")]
+            E2["secret.key<br/>kunci Fernet"]
+            E3["registered_faces/<br/>foto wajah"]
+        end
     end
-    F1\["Gmail SMTP\<br/\>satu-satunya koneksi keluar"\]
-    A1 \--\> B1  
-    A1 \--\> B2  
-    A2 \--\> B1  
-    B1 \--\> C1 \--\> C2 \--\> C3 \--\> C4  
-    B1 \--\> C5  
-    B1 \--\> D1  
-    B2 \--\> D1  
-    B2 \--\> D2  
-    C5 \--\> D1  
-    D1 \--\> E1  
-    D1 \--\> E2  
-    D1 \--\> E3  
-    D2 \-.-\> F1  
+
+    F1["Gmail SMTP<br/>satu-satunya koneksi keluar"]
+
+    A1 --> B1
+    A1 --> B2
+    A2 --> B1
+    B1 --> C1 --> C2 --> C3 --> C4
+    B1 --> C5
+    B1 --> D1
+    B2 --> D1
+    B2 --> D2
+    C5 --> D1
+    D1 --> E1
+    D1 --> E2
+    D1 --> E3
+    D2 -.-> F1
+
 \`\`\`
 
 \#\#\# Database Schema
