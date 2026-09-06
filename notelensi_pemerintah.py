@@ -22,6 +22,10 @@ import streamlit as st
 # Harus jadi perintah Streamlit pertama yang dijalankan.
 st.set_page_config(page_title="GovScribe - Aplikasi Notulensi Rapat Digital", layout="wide")
 
+# DEBUG SMTP
+#st.write("SMTP_EMAIL =", os.getenv("SMTP_EMAIL"))
+#st.write("SMTP_PASSWORD ADA =", bool(os.getenv("SMTP_PASSWORD")))
+
 # ==========================================
 # KONFIGURASI RAHASIA
 # ==========================================

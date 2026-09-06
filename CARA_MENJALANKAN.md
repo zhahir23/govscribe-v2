@@ -103,11 +103,13 @@ Aplikasi tetap jalan tanpa langkah ini. Yang tidak berfungsi hanya fitur
 4. Salin 16 digit yang muncul
 
 **Masukkan ke aplikasi.** Di folder `.streamlit`, ganti nama file
-`secrets.toml.contoh` menjadi `secrets.toml`, lalu isi:
+`secrets.toml.contoh` menjadi `secrets.toml`, lalu isi: 
 
 ```toml
-SMTP_EMAIL = "emailbot_kamu@gmail.com"
-SMTP_PASSWORD = "16digitdariGoogle"
+SMTP_EMAIL = "govscribe.bot@gmail.com"
+SMTP_PASSWORD = "qmxbrwmouprrvebi"
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = "587"
 NAMA_INSTANSI = "Sekretariat Daerah Kabupaten X"
 ```
 

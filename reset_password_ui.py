@@ -11,9 +11,15 @@ Cukup panggil satu fungsi:
         st.stop()
 
 Tiga tahap:
-    1. minta      -> masukkan NIP/username, sistem kirim kode ke email terdaftar
+    1. minta      -> masukkan ALAMAT EMAIL, sistem kirim kode ke email itu
     2. verifikasi -> masukkan 6 digit kode
     3. sandi_baru -> tentukan kata sandi baru
+
+Catatan: sejak versi ini, tahap pertama mencari akun berdasarkan EMAIL
+(db.ambil_pegawai_by_email), bukan lagi NIP/username. Begitu akun ketemu,
+username asli akun itu disimpan di session_state["rp_username"] dan dipakai
+untuk seluruh tahap berikutnya (OTP, verifikasi, ganti password) — jadi
+logika OTP di database.py tidak perlu diubah sama sekali.
 
 Semua state disimpan dengan awalan "rp_" supaya tidak bentrok dengan
 session_state yang sudah ada di file utama.
@@ -27,7 +33,7 @@ import streamlit as st
 import database as db
 import email_service as mail
 
-# Kalau True, sistem tidak memberi tahu apakah sebuah NIP terdaftar atau
+# Kalau True, sistem tidak memberi tahu apakah sebuah email terdaftar atau
 # tidak. Ini mencegah orang luar menebak-nebak daftar pegawai. Ubah ke
 # False kalau kamu lebih mengutamakan kemudahan saat uji coba.
 SEMBUNYIKAN_KEBERADAAN_AKUN = True
@@ -75,30 +81,31 @@ def _tampilkan_pesan():
 # LOGIKA
 # ==========================================================
 
-def _kirim_kode(username):
-    """Cari akun, buat OTP, kirim email. Mengembalikan (lanjut, email_samar)."""
-    pegawai = db.ambil_pegawai(username)
+def _kirim_kode(email):
+    """Cari akun lewat email, buat OTP, kirim email. Mengembalikan (lanjut, username_asli, email_samar)."""
+    email = (email or "").strip()
+    pegawai = db.ambil_pegawai_by_email(email)
 
-    pesan_netral = ("Jika NIP atau username tersebut terdaftar, kode verifikasi "
-                    "sudah dikirim ke email yang terhubung dengan akun.")
+    pesan_netral = ("Jika email tersebut terdaftar, kode verifikasi "
+                    "sudah dikirim ke alamat tersebut.")
 
     if pegawai is None:
         if SEMBUNYIKAN_KEBERADAAN_AKUN:
             _pesan("info", pesan_netral)
-            return True, ""
-        _pesan("error", "NIP atau username tidak terdaftar.")
-        return False, ""
+            return True, "", ""
+        _pesan("error", "Email tersebut tidak terdaftar di akun manapun.")
+        return False, "", ""
 
     email_tujuan = pegawai.get("email")
     if not mail.email_valid(email_tujuan):
         _pesan("error", "Akun ini belum punya alamat email yang valid. "
                         "Hubungi administrator untuk memperbarui data Anda.")
-        return False, ""
+        return False, "", ""
 
     kode, error = db.buat_otp(pegawai["username"])
     if kode is None:
         _pesan("error", error)
-        return False, ""
+        return False, "", ""
 
     terkirim, info = mail.kirim_otp(
         email_tujuan,
@@ -109,12 +116,12 @@ def _kirim_kode(username):
 
     if not terkirim:
         _pesan("error", f"Kode gagal dikirim. {info}")
-        return False, ""
+        return False, "", ""
 
     st.session_state["rp_waktu_kirim"] = time.time()
     _pesan("sukses", pesan_netral if SEMBUNYIKAN_KEBERADAAN_AKUN
            else f"Kode dikirim ke {mail.samarkan_email(email_tujuan)}.")
-    return True, mail.samarkan_email(email_tujuan)
+    return True, pegawai["username"], mail.samarkan_email(email_tujuan)
 
 
 def _sisa_jeda():
@@ -128,22 +135,25 @@ def _sisa_jeda():
 
 def _tahap_minta():
     st.subheader("Lupa Kata Sandi")
-    st.caption("Masukkan NIP atau username Anda. Kami akan mengirimkan kode "
-               "verifikasi ke email yang terdaftar pada akun tersebut.")
+    st.caption("Masukkan alamat email yang terdaftar pada akun Anda. Kami akan "
+               "mengirimkan kode verifikasi ke email tersebut.")
 
-    username = st.text_input("NIP / Username", key="rp_input_username",
-                             placeholder="contoh: pns_19850110")
+    email = st.text_input("Alamat Email", key="rp_input_email",
+                          placeholder="nama@instansi.go.id")
 
     kolom_kirim, kolom_batal = st.columns(2)
 
     with kolom_kirim:
         if st.button("Kirim Kode Verifikasi", type="primary", use_container_width=True):
-            if not username.strip():
-                _pesan("error", "NIP atau username wajib diisi.")
+            email_bersih = (email or "").strip()
+            if not email_bersih:
+                _pesan("error", "Alamat email wajib diisi.")
+            elif not mail.email_valid(email_bersih):
+                _pesan("error", "Format email tidak valid.")
             else:
-                lanjut, email_samar = _kirim_kode(username.strip())
+                lanjut, username_asli, email_samar = _kirim_kode(email_bersih)
                 if lanjut:
-                    st.session_state["rp_username"] = username.strip()
+                    st.session_state["rp_username"] = username_asli
                     st.session_state["rp_email_samar"] = email_samar
                     st.session_state["rp_tahap"] = "verifikasi"
             st.rerun()
@@ -176,7 +186,10 @@ def _tahap_verifikasi():
 
     with kolom_cek:
         if st.button("Verifikasi", type="primary", use_container_width=True):
-            if len(kode.strip()) != 6 or not kode.strip().isdigit():
+            if not st.session_state.get("rp_username"):
+                _pesan("error", "Sesi tidak valid. Silakan ulangi dari awal.")
+                st.session_state["rp_tahap"] = "minta"
+            elif len(kode.strip()) != 6 or not kode.strip().isdigit():
                 _pesan("error", "Kode harus berupa 6 angka.")
             else:
                 berhasil, info = db.verifikasi_otp(st.session_state["rp_username"], kode.strip())
@@ -193,7 +206,9 @@ def _tahap_verifikasi():
         if sisa > 0:
             st.button(f"Kirim Ulang ({sisa}s)", disabled=True, use_container_width=True)
         elif st.button("Kirim Ulang Kode", use_container_width=True):
-            _kirim_kode(st.session_state["rp_username"])
+            pegawai = db.ambil_pegawai(st.session_state.get("rp_username", ""))
+            if pegawai:
+                _kirim_kode(pegawai.get("email", ""))
             st.rerun()
 
     if st.button("Batalkan"):

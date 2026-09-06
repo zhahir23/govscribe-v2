@@ -15,6 +15,8 @@ Perubahan utama dibanding versi lama:
      dan otomatis di-upgrade saat login berhasil.
   5. Skema punya nomor versi (PRAGMA user_version), jadi database lama ikut
      ternaikkan otomatis tanpa perlu dihapus.
+  6. Reset password sekarang bisa dicari lewat email (ambil_pegawai_by_email),
+     bukan hanya lewat NIP/username.
 
 Cara pakai minimal:
     import database as db
@@ -40,7 +42,7 @@ from cryptography.fernet import Fernet, InvalidToken
 DB_FILE = os.getenv("GOVSCRIBE_DB", "govscribe.db")
 KEY_FILE = os.getenv("GOVSCRIBE_KEY_FILE", "secret.key")
 
-SKEMA_VERSI = 4          # naikkan angka ini setiap kali skema berubah
+SKEMA_VERSI = 5          # naikkan angka ini setiap kali skema berubah
 PBKDF2_ITERASI = 260_000
 
 OTP_MASA_BERLAKU_MENIT = 10   # kode hangus setelah ini
@@ -207,6 +209,7 @@ CREATE INDEX IF NOT EXISTS idx_attendance_waktu ON attendance(waktu DESC);
 CREATE INDEX IF NOT EXISTS idx_notulensi_status ON notulensi(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_news_created     ON published_news(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_otp_username     ON otp_reset(username, used);
+CREATE INDEX IF NOT EXISTS idx_employees_email  ON employees(email);
 """
 
 
@@ -245,6 +248,11 @@ def init_db():
         if versi < 4:
             if "foto_blob" not in _kolom_tabel(conn, "employees"):
                 conn.execute("ALTER TABLE employees ADD COLUMN foto_blob BLOB")
+
+        if versi < 5:
+            # Index email dibuat lewat SKEMA (CREATE INDEX IF NOT EXISTS) di atas,
+            # jadi database lama otomatis kebagian tanpa perlu ALTER TABLE di sini.
+            pass
 
         conn.execute(f"PRAGMA user_version = {SKEMA_VERSI}")
 
@@ -365,6 +373,28 @@ def ambil_pegawai(username):
     with db() as conn:
         row = conn.execute(
             "SELECT * FROM employees WHERE username = ? OR nip = ?", (username, username)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def ambil_pegawai_by_email(email):
+    """
+    Cari pegawai berdasarkan alamat email (dipakai alur "Lupa Kata Sandi" versi
+    email). Pencocokan tidak peka huruf besar/kecil (case-insensitive).
+
+    Kolom `email` di skema TIDAK unique, jadi kalau ada dua akun dengan email
+    yang sama persis, fungsi ini mengembalikan yang paling lama terdaftar
+    (id terkecil). Sebaiknya dipastikan tiap pegawai punya email unik saat
+    registrasi supaya OTP tidak salah kirim ke akun yang keliru.
+    """
+    email = str(email or "").strip().lower()
+    if not email:
+        return None
+    init_db()
+    with db() as conn:
+        row = conn.execute(
+            "SELECT * FROM employees WHERE LOWER(email) = ? ORDER BY id LIMIT 1",
+            (email,)
         ).fetchone()
         return dict(row) if row else None
 
