@@ -204,7 +204,7 @@ def _tahap_verifikasi():
 
 def _tahap_sandi_baru():
     st.subheader("Buat Kata Sandi Baru")
-    st.caption(f"Minimal {db.PASSWORD_MIN_PANJANG} karakter, kombinasi huruf dan angka.")
+    st.caption(f"Minimal {db.PASSWORD_MIN_PANJANG} karakter. Password boleh berisi huruf, angka, spasi, dan simbol.")
 
     sandi = st.text_input("Kata Sandi Baru", type="password", key="rp_sandi1")
     ulangi = st.text_input("Ulangi Kata Sandi", type="password", key="rp_sandi2")

@@ -40,13 +40,13 @@ from cryptography.fernet import Fernet, InvalidToken
 DB_FILE = os.getenv("GOVSCRIBE_DB", "govscribe.db")
 KEY_FILE = os.getenv("GOVSCRIBE_KEY_FILE", "secret.key")
 
-SKEMA_VERSI = 3          # naikkan angka ini setiap kali skema berubah
+SKEMA_VERSI = 4          # naikkan angka ini setiap kali skema berubah
 PBKDF2_ITERASI = 260_000
 
 OTP_MASA_BERLAKU_MENIT = 10   # kode hangus setelah ini
 OTP_MAKS_PERCOBAAN = 5        # salah 5x, kode dianggap hangus
 OTP_MAKS_PER_JAM = 5          # maksimal permintaan kode per akun per jam
-PASSWORD_MIN_PANJANG = 8
+PASSWORD_MIN_PANJANG = 6
 
 
 # ==========================================================
@@ -145,6 +145,7 @@ CREATE TABLE IF NOT EXISTS employees (
     password_hash TEXT NOT NULL,
     email         TEXT,
     foto_path     TEXT,
+    foto_blob     BLOB,
     nama          TEXT,
     jabatan       TEXT,
     role          TEXT NOT NULL DEFAULT 'pns',
@@ -241,6 +242,10 @@ def init_db():
             if "percobaan" not in _kolom_tabel(conn, "otp_reset"):
                 conn.execute("ALTER TABLE otp_reset ADD COLUMN percobaan INTEGER NOT NULL DEFAULT 0")
 
+        if versi < 4:
+            if "foto_blob" not in _kolom_tabel(conn, "employees"):
+                conn.execute("ALTER TABLE employees ADD COLUMN foto_blob BLOB")
+
         conn.execute(f"PRAGMA user_version = {SKEMA_VERSI}")
 
 
@@ -286,29 +291,33 @@ def cek_password(password, hash_tersimpan):
 # ==========================================================
 
 def simpan_pegawai(username, password, nip=None, nama=None, email=None,
-                   foto_path=None, jabatan=None, role="pns"):
+                   foto_path=None, foto_blob=None, jabatan=None, role="pns"):
     """
     Daftar pegawai baru atau perbarui yang sudah ada.
     foto_path adalah string path, bukan bytes. Penyimpanan file gambar
     tetap ditangani simpan_foto_buffer() di file utama.
     """
+    username = str(username or "").strip()
+    nip = str(nip or username).strip()
+    email = str(email or f"{username}@local").strip()
     init_db()
     with db() as conn:
         conn.execute(
             """
-            INSERT INTO employees (nip, username, password_hash, email, foto_path,
+            INSERT INTO employees (nip, username, password_hash, email, foto_path, foto_blob,
                                    nama, jabatan, role, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
             ON CONFLICT(username) DO UPDATE SET
                 password_hash = excluded.password_hash,
                 email         = COALESCE(excluded.email, employees.email),
                 foto_path     = COALESCE(excluded.foto_path, employees.foto_path),
+                foto_blob     = COALESCE(excluded.foto_blob, employees.foto_blob),
                 nama          = COALESCE(excluded.nama, employees.nama),
                 jabatan       = COALESCE(excluded.jabatan, employees.jabatan),
                 updated_at    = CURRENT_TIMESTAMP
             """,
-            (nip or username, username, hash_password(password), email or f"{username}@local",
-             foto_path, nama or username, jabatan, role)
+            (nip, username, hash_password(password), email,
+             foto_path, foto_blob, nama or username, jabatan, role)
         )
 
 
@@ -319,6 +328,9 @@ def save_user_to_db(username, password, foto_path=None):
 
 def verifikasi_login(username, password):
     """Cek login. Hash SHA-256 lama otomatis di-upgrade ke PBKDF2 saat berhasil."""
+    username = str(username or "").strip()
+    if not username or password is None:
+        return False
     init_db()
     with db() as conn:
         row = conn.execute(
@@ -361,7 +373,7 @@ def daftar_pegawai():
     init_db()
     with db() as conn:
         rows = conn.execute(
-            "SELECT id, nip, username, nama, email, jabatan, role, aktif, foto_path "
+            "SELECT id, nip, username, nama, email, jabatan, role, aktif, foto_path, foto_blob "
             "FROM employees ORDER BY nama"
         ).fetchall()
         return [dict(r) for r in rows]
@@ -662,13 +674,10 @@ def verifikasi_otp(username, kode):
 
 
 def validasi_password(password):
-    """Aturan minimum. Mengembalikan (valid, pesan)."""
+    """Password boleh berisi karakter apa pun tanpa batas maksimum."""
+    password = "" if password is None else str(password)
     if len(password) < PASSWORD_MIN_PANJANG:
         return False, f"Kata sandi minimal {PASSWORD_MIN_PANJANG} karakter."
-    if password.isdigit() or password.isalpha():
-        return False, "Kata sandi harus mengandung kombinasi huruf dan angka."
-    if password.lower() in {"password", "12345678", "qwerty123", "admin123"}:
-        return False, "Kata sandi terlalu umum, gunakan yang lain."
     return True, "Kata sandi memenuhi syarat."
 
 

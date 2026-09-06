@@ -12,6 +12,7 @@ Menjalankan aplikasi:
 
 import os
 import io
+import base64
 import wave
 from datetime import datetime
 
@@ -48,9 +49,13 @@ except ModuleNotFoundError:
 
 from PIL import Image
 from docx import Document
-from audio_recorder_streamlit import audio_recorder
 import numpy as np
 from scipy.signal import butter, lfilter
+
+try:
+    import cv2
+except ModuleNotFoundError:
+    cv2 = None
 
 # ==========================================
 # PENYIMPANAN FOTO WAJAH
@@ -78,6 +83,53 @@ def simpan_foto_buffer(username, foto_bytes, prefix=""):
         return None
 
 
+def foto_blob(foto_bytes):
+    """Kembalikan salinan bytes foto untuk disimpan permanen di SQLite."""
+    if foto_bytes is None:
+        return None
+    try:
+        if hasattr(foto_bytes, "getvalue"):
+            return foto_bytes.getvalue()
+        foto_bytes.seek(0)
+        return foto_bytes.read()
+    except Exception:
+        return None
+
+
+def foto_data_uri(user):
+    """Ambil foto dari BLOB database, lalu fallback ke file foto lama."""
+    blob = user.get("foto_blob")
+    if blob:
+        encoded = base64.b64encode(blob).decode("ascii")
+        return f"data:image/jpeg;base64,{encoded}"
+    foto_path = user.get("foto_path")
+    if foto_path and os.path.exists(foto_path):
+        with open(foto_path, "rb") as foto_file:
+            encoded = base64.b64encode(foto_file.read()).decode("ascii")
+        return f"data:image/jpeg;base64,{encoded}"
+    return None
+
+
+def deteksi_wajah_valid(foto_bytes):
+    """Kembalikan True bila foto memuat sedikitnya satu wajah yang jelas."""
+    if cv2 is None:
+        return True
+    try:
+        foto_bytes.seek(0)
+        image = Image.open(foto_bytes).convert("RGB")
+        gray = cv2.cvtColor(np.array(image), cv2.COLOR_RGB2GRAY)
+        cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        )
+        wajah = cascade.detectMultiScale(
+            gray, scaleFactor=1.1, minNeighbors=6, minSize=(80, 80)
+        )
+        foto_bytes.seek(0)
+        return len(wajah) > 0
+    except Exception:
+        return True
+
+
 # ==========================================
 # JEMBATAN KE MODUL DATABASE
 # ==========================================
@@ -100,14 +152,14 @@ db.seed_default_data()
 @st.dialog("🚪Absen Keluar")
 def modal_logout():
     st.write("Silakan verifikasi akun, ambil foto bukti absensi, dan pilih jenis absensi sebelum keluar:")
-    
+
     logout_nip = st.text_input("NIP / Username PNS", value=st.session_state.get("username", ""), key="logout_nip_val")
     logout_pass = st.text_input("Kata Sandi / Password Akun", type="password", key="logout_pass_val")
     opsi_logout = st.radio("PILIH ABSEN KELUAR:", ["Jam ISHOMA", "Jam Pulang"], key="opsi_logout_val")
-    
+
     st.write("📸 **Ambil Foto Bukti Absen Keluar:**")
     logout_photo = st.camera_input("Ambil foto untuk bukti absen keluar", key="logout_cam")
-    
+
     if st.button("Konfirmasi Out & Logout", use_container_width=True):
         if not logout_nip or not logout_pass:
             st.error("NIP dan Password wajib diisi!")
@@ -157,7 +209,7 @@ def terapkan_filter_noise(file_input_path, file_output_path):
             params = wf.getparams()
             nchannels, sampwidth, framerate, nframes = params[:4]
             data = wf.readframes(nframes)
-            
+
         audio_data = np.frombuffer(data, dtype=np.int16)
         lowcut = 300.0
         highcut = 3400.0
@@ -166,7 +218,7 @@ def terapkan_filter_noise(file_input_path, file_output_path):
         high = highcut / nyq
         b, a = butter(1, [low, high], btype='band')
         filtered_audio = lfilter(b, a, audio_data).astype(np.int16)
-        
+
         with wave.open(file_output_path, 'wb') as wf:
             wf.setparams(params)
             wf.writeframes(filtered_audio.tobytes())
@@ -175,7 +227,7 @@ def terapkan_filter_noise(file_input_path, file_output_path):
         return file_input_path
 
 def transkripsi_audio(file_path):
-    model = load_whisper_model() 
+    model = load_whisper_model()
     result = model.transcribe(file_path, language="id", fp16=False)
     return result["text"]
 
@@ -186,7 +238,7 @@ def buat_dokumen_word(judul, isi_teks):
     doc.add_paragraph(f"Topik / Judul: {judul}")
     doc.add_heading("Hasil Transkripsi Suara:", level=2)
     doc.add_paragraph(isi_teks)
-    
+
     bio = io.BytesIO()
     doc.save(bio)
     bio.seek(0)
@@ -196,14 +248,14 @@ def ekstrak_poin_masyarakat(teks_notulensi):
     kalimat_list = teks_notulensi.split(". ")
     poin_publik = []
     kata_kunci = ["disetujui", "diputuskan", "sepakat", "diberlakukan", "anggaran", "pelaksanaan", "pembangunan", "resmi"]
-    
+
     for kalimat in kalimat_list:
         if any(kw in kalimat.lower() for kw in kata_kunci):
             poin_publik.append(f"• {kalimat.strip()}")
-            
+
     if not poin_publik:
         poin_publik.append("• Hasil rapat bersifat internal atau belum memuat keputusan publik secara langsung.")
-        
+
     return "\n".join(poin_publik)
 
 def generate_artikel_berita(judul_rapat, lokasi, teks_transkrip, poin_utama):
@@ -292,10 +344,162 @@ h1, h2, h3, h4 { font-family:'Space Grotesk', sans-serif; letter-spacing:0; colo
 .login-head p { color:var(--muted); margin:0; }
 .profile-banner { display:flex; align-items:center; gap:18px; padding:24px; border-radius:14px; background:var(--navy); color:white; margin-bottom:18px; }
 .profile-avatar { width:68px; height:68px; display:grid; place-items:center; border-radius:50%; background:#ef8a54; color:white; font:700 25px 'Space Grotesk'; }
+.profile-avatar img { width:100%; height:100%; object-fit:cover; border-radius:50%; }
 .profile-banner h2 { color:white; margin:0 0 3px; }
 .profile-banner p { color:#c4dce3; margin:0; }
 div[data-testid="stMetric"] { background:var(--paper); border:1px solid var(--line); border-radius:12px; padding:12px; }
-button[kind="primary"] { background:var(--blue); border-color:var(--blue); }
+[data-testid="stAppViewContainer"] [data-testid="stButton"] button,
+[data-testid="stAppViewContainer"] button[kind="primary"],
+[data-testid="stAppViewContainer"] button[kind="secondary"],
+[data-testid="stAppViewContainer"] button[kind="tertiary"] {
+    background:var(--blue) !important;
+    border:1px solid var(--blue) !important;
+    color:#ffffff !important;
+    font-weight:600 !important;
+    text-shadow:none !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stButton"] button:hover,
+[data-testid="stAppViewContainer"] button[kind="primary"]:hover,
+[data-testid="stAppViewContainer"] button[kind="secondary"]:hover,
+[data-testid="stAppViewContainer"] button[kind="tertiary"]:hover {
+    background:var(--navy) !important;
+    border-color:var(--navy) !important;
+    color:#ffffff !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stButton"] button p,
+[data-testid="stAppViewContainer"] [data-testid="stButton"] button span,
+[data-testid="stAppViewContainer"] [data-testid="stButton"] button svg,
+[data-testid="stAppViewContainer"] button[kind="primary"] p,
+[data-testid="stAppViewContainer"] button[kind="secondary"] p,
+[data-testid="stAppViewContainer"] button[kind="tertiary"] p {
+    color:#ffffff !important;
+    fill:#ffffff !important;
+    stroke:#ffffff !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stButton"] button:disabled {
+    background:#6b7b87 !important;
+    border-color:#6b7b87 !important;
+    color:#ffffff !important;
+    opacity:.75 !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] button[aria-label*="password" i],
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] button[aria-label*="show" i],
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] button[aria-label*="hide" i] {
+    width:44px !important;
+    min-width:44px !important;
+    height:100% !important;
+    min-height:38px !important;
+    padding:0 !important;
+    background:#ffffff !important;
+    border:0 !important;
+    border-left:1px solid #c8d4dc !important;
+    border-radius:0 9px 9px 0 !important;
+    color:#12304a !important;
+    opacity:1 !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] button[aria-label*="password" i] svg,
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] button[aria-label*="show" i] svg,
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] button[aria-label*="hide" i] svg {
+    color:#12304a !important;
+    fill:none !important;
+    stroke:#12304a !important;
+    opacity:1 !important;
+    width:20px !important;
+    height:20px !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] input,
+[data-testid="stAppViewContainer"] [data-testid="stTextArea"] textarea,
+[data-testid="stAppViewContainer"] [data-testid="stNumberInput"] input {
+    background:#ffffff !important;
+    color:#182430 !important;
+    caret-color:#2167a5 !important;
+    border:1.5px solid #c8d4dc !important;
+    border-radius:10px !important;
+    -webkit-text-fill-color:#182430 !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] input:focus,
+[data-testid="stAppViewContainer"] [data-testid="stTextArea"] textarea:focus,
+[data-testid="stAppViewContainer"] [data-testid="stNumberInput"] input:focus {
+    border-color:#2167a5 !important;
+    box-shadow:0 0 0 2px rgba(33,103,165,.18) !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] input::placeholder,
+[data-testid="stAppViewContainer"] [data-testid="stTextArea"] textarea::placeholder {
+    color:#71808c !important;
+    opacity:1 !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] button[aria-label*="password" i] svg path,
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] button[aria-label*="show" i] svg path,
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] button[aria-label*="hide" i] svg path {
+    stroke:#12304a !important;
+    fill:none !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] [data-baseweb="base-input"]:has(button[aria-label*="password" i]),
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] [data-baseweb="base-input"]:has(button[aria-label*="show" i]),
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"] [data-baseweb="base-input"]:has(button[aria-label*="hide" i]) {
+    overflow:hidden !important;
+    background:#ffffff !important;
+    border:1.5px solid #c8d4dc !important;
+    border-radius:10px !important;
+}
+/* Password fields: one clean control with a dedicated eye area. */
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="password" i]),
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="show" i]),
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="hide" i]) {
+    padding:14px 16px 16px !important;
+    margin:8px 0 18px !important;
+    background:#f8fbff !important;
+    border:1px solid #e2ebf7 !important;
+    border-radius:16px !important;
+    box-shadow:0 4px 14px rgba(42,91,151,.06) !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="password" i]) label,
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="show" i]) label,
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="hide" i]) label {
+    margin:0 0 9px !important;
+    color:#18314f !important;
+    font-size:16px !important;
+    font-weight:700 !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="password" i]) [data-baseweb="base-input"],
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="show" i]) [data-baseweb="base-input"],
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="hide" i]) [data-baseweb="base-input"] {
+    height:58px !important;
+    min-height:58px !important;
+    border:1.5px solid #bfd4f4 !important;
+    border-radius:13px !important;
+    box-shadow:0 0 0 2px rgba(119,170,238,.10) !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="password" i]) input,
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="show" i]) input,
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="hide" i]) input {
+    height:55px !important;
+    padding:0 16px !important;
+    border:0 !important;
+    border-radius:12px 0 0 12px !important;
+    background:#ffffff !important;
+    font-size:16px !important;
+    letter-spacing:.08em !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="password" i]) button,
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="show" i]) button,
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="hide" i]) button {
+    width:64px !important;
+    min-width:64px !important;
+    height:55px !important;
+    margin:0 !important;
+    border-left:1px solid #d9e5f5 !important;
+    border-radius:0 12px 12px 0 !important;
+    background:#f5f8fd !important;
+}
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="password" i]) button svg,
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="show" i]) button svg,
+[data-testid="stAppViewContainer"] [data-testid="stTextInput"]:has(button[aria-label*="hide" i]) button svg {
+    width:26px !important;
+    height:26px !important;
+    stroke:#5a6f91 !important;
+    color:#5a6f91 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -312,6 +516,8 @@ if "login_failed" not in st.session_state:
     st.session_state["login_failed"] = False
 if "show_employee_login" not in st.session_state:
     st.session_state["show_employee_login"] = False
+if "auth_view" not in st.session_state:
+    st.session_state["auth_view"] = "login"
 
 def get_current_user():
     pegawai = db.ambil_pegawai(st.session_state.get("username", ""))
@@ -370,14 +576,26 @@ def render_profile():
     user = get_current_user()
     render_topbar("Profil pegawai", "AKUN SAYA")
     initials = (user.get("nama") or user.get("username") or "G")[:1].upper()
-    st.markdown(f"<div class='profile-banner'><div class='profile-avatar'>{initials}</div><div><h2>{user.get('nama') or 'Pegawai GovScribe'}</h2><p>{user.get('email') or 'Email belum diatur'} · Akun terverifikasi</p></div></div>", unsafe_allow_html=True)
-    st.markdown("### Informasi identitas")
+    foto_uri = foto_data_uri(user)
+    avatar = f"<img src='{foto_uri}'/>" if foto_uri else initials
+    st.markdown(f"<div class='profile-banner'><div class='profile-avatar'>{avatar}</div><div><h2>{user.get('nama') or 'Pegawai GovScribe'}</h2><p>{user.get('email') or 'Email belum diatur'} · Akun aktif</p></div></div>", unsafe_allow_html=True)
+
+    total_absensi = len(db.riwayat_absensi(nip=user.get("nip") or user.get("username"), limit=500))
+    total_notulensi = len(db.daftar_notulensi(dibuat_oleh=user.get("username"), limit=500))
+    metric_cols = st.columns(3)
+    metric_cols[0].metric("Status akun", "Aktif")
+    metric_cols[1].metric("Total absensi", total_absensi)
+    metric_cols[2].metric("Notulensi dibuat", total_notulensi)
+
+    st.markdown("### Informasi pegawai")
     with st.container(border=True):
         col1, col2 = st.columns(2)
         col1.text_input("Nama lengkap", value=user.get("nama") or "", disabled=True)
         col2.text_input("NIP / Username", value=user.get("nip") or user.get("username") or "", disabled=True)
         col1.text_input("Email dinas", value=user.get("email") or "", disabled=True)
-        col2.text_input("Peran", value="Administrator / Pegawai", disabled=True)
+        col2.text_input("Jabatan", value=user.get("jabatan") or "Pegawai", disabled=True)
+        col1.text_input("Peran", value=user.get("role") or "pns", disabled=True)
+        col2.text_input("Terdaftar sejak", value=(user.get("created_at") or "-")[:10], disabled=True)
 
 def render_attendance_page():
     render_topbar("Riwayat absensi dan keamanan", "ADMINISTRASI")
@@ -433,12 +651,19 @@ def render_login_page():
         reset_password_ui.render()
         return
 
-    tab_manual, tab_register = st.tabs([
-        "⌨️ Absensi Manual",
-        "📝 Pendaftaran Karyawan Baru"
-    ])
+    if "next_auth_view" in st.session_state:
+        st.session_state["auth_view"] = st.session_state.pop("next_auth_view")
 
-    with tab_manual:
+    mode = st.radio(
+        "Pilih layanan",
+        ["login", "daftar"],
+        key="auth_view",
+        format_func=lambda value: "⌨️ Absensi Manual" if value == "login" else "📝 Pendaftaran Karyawan Baru",
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+
+    if mode == "login":
         st.subheader("Absensi Manual (NIP & Password)")
 
         col_m1, col_m2 = st.columns(2)
@@ -448,8 +673,12 @@ def render_login_page():
             kegiatan_manual = st.selectbox("Agenda / Kegiatan", ["Rapat Internal Setda", "Pelayanan Publik", "Rapat Pleno Daerah"], key="keg_manual")
 
             if st.button("Submit Absensi Manual", type="primary"):
+                nip_input = (nip_input or "").strip()
                 if not nip_input or not password_input:
                     st.warning("NIP dan password wajib diisi.")
+                elif db.ambil_pegawai(nip_input) is None:
+                    st.session_state["login_failed"] = True
+                    st.error("NIP / Username belum terdaftar. Silakan gunakan data registrasi yang benar.")
                 elif db.verifikasi_login(nip_input, password_input):
                     db.catat_absensi(nip_input, kegiatan_manual,
                                      metode="Manual Input", status="Hadir (Tervalidasi)")
@@ -459,19 +688,14 @@ def render_login_page():
                     st.success("Absensi berhasil dicatat. Mengalihkan ke workspace...")
                     st.rerun()
                 else:
-                    # Pesan sengaja tidak membedakan akun tidak ada dan password
-                    # salah, supaya daftar pegawai tidak bisa ditebak dari luar.
                     st.session_state["login_failed"] = True
-                    st.rerun()
-
-            if st.session_state["login_failed"]:
-                st.error("NIP atau password salah.")
+                    st.error("Password salah. Gunakan password yang dibuat saat registrasi atau reset melalui email.")
 
             if st.button("Lupa kata sandi?"):
                 st.session_state["show_forgot_pass"] = True
                 st.rerun()
 
-    with tab_register:
+    else:
         st.subheader("Formulir Registrasi Karyawan PNS Baru")
         st.caption("Lengkapi data identitas dan verifikasi wajah untuk membuat akun baru.")
 
@@ -492,10 +716,23 @@ def render_login_page():
         st.divider()
 
         if st.button("✨ Daftar Karyawan Baru", type="primary", use_container_width=True):
-            valid_pass, catatan_pass = db.validasi_password(reg_pass or "")
+            reg_nip = (reg_nip or "").strip()
+            reg_email = (reg_email or "").strip()
+            reg_pass = reg_pass or ""
+            reg_pass_confirm = reg_pass_confirm or ""
+            kolom_kosong = []
+            if not reg_nip:
+                kolom_kosong.append("NIP / Username")
+            if not reg_email:
+                kolom_kosong.append("Email")
+            if not reg_pass:
+                kolom_kosong.append("Password")
+            if not reg_pass_confirm:
+                kolom_kosong.append("Konfirmasi password")
+            valid_pass, catatan_pass = db.validasi_password(reg_pass)
 
-            if not reg_nip or not reg_pass or not reg_email:
-                st.warning("⚠️ NIP, Email, dan Password wajib diisi!")
+            if kolom_kosong:
+                st.warning(f"⚠️ Kolom berikut wajib diisi: {', '.join(kolom_kosong)}.")
             elif db.ambil_pegawai(reg_nip) is not None:
                 st.error("❌ NIP/Username ini sudah terdaftar dalam sistem!")
             elif not mail.email_valid(reg_email):
@@ -507,11 +744,30 @@ def render_login_page():
             elif reg_photo is None:
                 st.warning("📷 Silakan ambil foto wajah terlebih dahulu!")
             else:
+                wajah_valid = deteksi_wajah_valid(reg_photo)
+                if not wajah_valid:
+                    st.error(
+                        "Foto belum dapat diverifikasi. Pastikan wajah terlihat jelas, "
+                        "menghadap kamera, dan pencahayaan cukup, lalu ambil foto ulang."
+                    )
+                    return
+
                 foto_path = simpan_foto_buffer(reg_nip, reg_photo)
-                db.simpan_pegawai(reg_nip, reg_pass, nip=reg_nip, nama=reg_nip,
-                                  email=reg_email, foto_path=foto_path)
-                st.success(f"🎉 Pendaftaran Berhasil! NIP {reg_nip} telah terdaftar ke dalam sistem.")
-                st.info("Silakan masuk melalui tab Absensi Manual.")
+                db.simpan_pegawai(
+                    reg_nip,
+                    reg_pass,
+                    nip=reg_nip,
+                    nama=reg_nip,
+                    email=reg_email,
+                    foto_path=foto_path,
+                    foto_blob=reg_photo.getvalue(),
+                )
+                if db.ambil_pegawai(reg_nip) is None:
+                    st.error("Akun gagal disimpan ke database. Silakan coba lagi.")
+                    return
+                st.session_state["next_auth_view"] = "login"
+                st.success("Registrasi berhasil. Silakan login dengan NIP/username dan password baru.")
+                st.rerun()
 
 # ------------------------------------------
 # ROUTING HALAMAN:
@@ -571,14 +827,14 @@ else:
 
     render_topbar("Workspace rapat dan publikasi", "WORKSPACE")
     st.title("Notulensi rapat digital")
-    
+
     tab1, tab2, tab3, tab4 = st.tabs([
-        "1. Audio & Transkripsi (Perekam Langsung)", 
-        "2. Poin Masyarakat & Berita", 
+        "1. Audio & Transkripsi (Perekam Langsung)",
+        "2. Poin Masyarakat & Berita",
         "3. Portal Berita Publik",
         "4. Keamanan Database Absensi PNS"
     ])
-    
+
     with tab1:
         st.header("Perekam Suara & Transkripsi Otomatis")
 
@@ -599,20 +855,26 @@ else:
                     st.rerun()
 
         col_rec1, col_rec2 = st.columns(2)
-        
+
         with col_rec1:
-            st.write("🎙️ **Klik ikon mikrofon di bawah untuk mulai/berhenti merekam:**")
-            audio_bytes = audio_recorder(
-                text="Klik untuk rekam",
-                recording_color="#e84c3d",
-                neutral_color="#6aa84f",
-                icon_name="microphone",
-                icon_size="2x",
+            st.write("🎙️ **Klik Record untuk mulai merekam, klik Stop untuk mengakhiri "
+                     "rekaman (tidak berhenti otomatis saat Anda diam):**")
+            audio_input_file = st.audio_input(
+                "Rekam suara rapat",
+                key="meeting_recorder",
             )
-            
+            audio_bytes = (
+                audio_input_file.read()
+                if audio_input_file is not None
+                else None
+            )
+
         with col_rec2:
             st.write("📁 **Atau unggah file audio jika sudah ada:**")
-            uploaded_file = st.file_uploader("Unggah File Audio (.wav / .mp3)", type=["wav", "mp3"])
+            uploaded_file = st.file_uploader(
+                "Unggah File Audio (.wav / .mp3)",
+                type=["wav", "mp3"],
+            )
 
         active_audio_bytes = None
         file_extension = "wav"
@@ -651,9 +913,9 @@ else:
                     )
                     st.success("Transkripsi selesai dan tersimpan sebagai draf.")
 
-                    if os.path.exists(temp_raw_path): 
+                    if os.path.exists(temp_raw_path):
                         os.remove(temp_raw_path)
-                    if os.path.exists(temp_filtered_path): 
+                    if os.path.exists(temp_filtered_path):
                         os.remove(temp_filtered_path)
 
         if "transkrip_raw" in st.session_state:
@@ -680,7 +942,7 @@ else:
             with col_a:
                 judul_rapat = st.text_input("Judul/Topik Rapat", "Evaluasi Layanan Publik Pemko")
                 lokasi_rapat = st.text_input("Lokasi Rapat", "Kantor Wali Kota")
-                
+
             if st.button("Generate Poin Publik & Berita"):
                 teks_raw = st.session_state["transkrip_raw"]
                 poin_publik = ekstrak_poin_masyarakat(teks_raw)
@@ -692,7 +954,7 @@ else:
             if "poin_publik" in st.session_state:
                 edit_poin = st.text_area("Edit Poin Keputusan", st.session_state["poin_publik"], height=120)
                 edit_artikel = st.text_area("Edit Artikel Berita", st.session_state["artikel_berita"], height=250)
-                
+
                 col_simpan, col_terbit = st.columns(2)
 
                 with col_simpan:

@@ -7,3 +7,4 @@ python-docx
 audio-recorder-streamlit
 numpy
 scipy
+opencv-python-headless
